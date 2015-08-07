@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -17,6 +18,54 @@ void error(const char *msg)
     exit(0);
 }
 
+//Entry: filename as string
+//Exit:  If all characters in file are valid the function will return
+//          the number of characters, if an invalid character is found
+//          the function will return -1
+int checkFile(char *filename)
+{
+    FILE *fp;
+    int c, count;
+
+    fp = fopen(filename, "r");
+    if(fp == NULL) 
+    {
+        fprintf(stderr, "file %s did not open\n", filename);
+        return -1;
+    }
+
+    count = 0;
+    while((c = fgetc(fp)) != EOF)
+    {
+        //If c is not a space or an alphabetic character
+        if(c != 32 && !isalpha(c))
+        {
+            //if c is a lf character
+            if(c == 10)
+            {
+                //get the next character
+                c = fgetc(fp);
+                //if newline is followed by EOF ok, return count
+                if (c == EOF)
+                {
+                    fclose(fp);
+                    return count;
+                }
+            }
+            //all other non space or alpha characters
+            //or newline not followed by EOF
+            //is invalid input
+            fclose(fp);
+            return -1;
+        }
+        count++;
+    }
+    //in case the file happens to end in just EOF without newline prior
+    fclose(fp);
+    return count;
+}
+
+
 int main(int argc, char *argv[])
 {
     int sockfd, portno, n, plainfd;
@@ -24,25 +73,22 @@ int main(int argc, char *argv[])
     struct hostent *server;
 
     char buffer[BSIZE];
-    if (argc < 2) {
+    if (argc < 4) {
        fprintf(stderr,"usage %s hostname port\n", argv[0]);
        exit(0);
     }
+
+    n = checkFile(argv[1]);
+    printf("Number of chars in text file: %d\n", n);
+    //TODO:check key when supplied
 	
-    plainfd = open("plaintext2", O_RDONLY);
+    plainfd = open(argv[1], O_RDONLY);
     if (plainfd < 0)
     {
         fprintf(stderr, "error opening file");
     }
 
-
-//    while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
-//    {
-//        printf("%s", buffer);
-//        bzero(buffer, BSIZE);
-//    }
-
-    portno = atoi(argv[1]);
+    portno = atoi(argv[3]);
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
@@ -60,32 +106,21 @@ int main(int argc, char *argv[])
     if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
         error("ERROR connecting");
 
-
     bzero(buffer, BSIZE);
     while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
     {
-        printf("client [%d]", n);
         write(sockfd, buffer, n);
         bzero(buffer, BSIZE);
     }
     if (shutdown(sockfd, SHUT_WR) < 0)
         error("shutdown write client failed");
-    printf("client finished reading\n");
-//    printf("Please enter the message: ");
-//    bzero(buffer,BSIZE);
-//    fgets(buffer,BSIZE - 1,stdin);
-//    n = write(sockfd,buffer,strlen(buffer));
-//    if (n < 0) 
-//         error("ERROR writing to socket");
 
-    //THE SERVER'S RESPONSE
+    //PROCESS THE SERVER'S RESPONSE
     bzero(buffer,BSIZE);
     n = read(sockfd,buffer,BSIZE - 1);
-    printf("client %d\n", n);
     if (n < 0) 
          error("ERROR reading from socket");
     printf("%s\n",buffer);
-    printf("client closing \n");
     close(sockfd);
     return 0;
 }

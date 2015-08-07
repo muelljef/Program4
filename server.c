@@ -8,17 +8,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#define BSIZE 256 
+
 void error(const char *msg)
 {
     perror(msg);
     exit(1);
 }
 
+
 int main(int argc, char *argv[])
 {
+    FILE *org, *key;
     int sockfd, newsockfd, portno;
     socklen_t clilen;
-    char buffer[256];
+    char buffer[BSIZE];
     struct sockaddr_in serv_addr, cli_addr;
     int n;
     if (argc < 2) {
@@ -44,16 +48,17 @@ int main(int argc, char *argv[])
     if (newsockfd < 0) 
          error("ERROR on accept");
 
-    bzero(buffer,256);
-    while((n = read(newsockfd,buffer,255)) > 0)
+    //open a file to write content from stream
+    org = fopen("temp", "w");
+
+    bzero(buffer,BSIZE);
+    while((n = read(newsockfd,buffer,BSIZE - 1)) > 0)
     {
-        printf(" [%d] ", n);
-        printf("%s",buffer);
-        bzero(buffer,256);
+        fprintf(org, "%s", buffer);
+        bzero(buffer,BSIZE);
     }
-    printf("server finished reading\n");
     //SERVER RESPONDING
-    n = write(newsockfd,"I got your message",18);
+    n = write(newsockfd,"I got your message", 18);
     if (n < 0) error("ERROR writing to socket");
     close(newsockfd);
     close(sockfd);
