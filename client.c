@@ -68,9 +68,11 @@ int checkFile(char *filename)
 
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, n, plainfd;
+    int sockfd, portno, n, plainfd, keyfd;
     struct sockaddr_in serv_addr;
     struct hostent *server;
+    int numKey, numPlain;
+    FILE *fpKey;
 
     char buffer[BSIZE];
     if (argc < 4) {
@@ -78,14 +80,24 @@ int main(int argc, char *argv[])
        exit(0);
     }
 
-    n = checkFile(argv[1]);
-    printf("Number of chars in text file: %d\n", n);
+    numPlain = checkFile(argv[1]);
+    numKey = checkFile(argv[2]);
+    printf("Number of chars in text file: %d\n", numPlain);
+    printf("Number of chars in text file: %d\n", numKey);
     //TODO:check key when supplied
 	
     plainfd = open(argv[1], O_RDONLY);
     if (plainfd < 0)
     {
         fprintf(stderr, "error opening file");
+        exit(1);
+    }
+
+    keyfd = open(argv[2], O_RDONLY);
+    if (fpKey < 0)
+    {
+        fprintf(stderr, "error opening key");
+        exit(1);
     }
 
     portno = atoi(argv[3]);
@@ -107,8 +119,29 @@ int main(int argc, char *argv[])
         error("ERROR connecting");
 
     bzero(buffer, BSIZE);
+    char *rmLf;
+    int i = 0;
     while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
     {
+        for(i = 0; i < n; i++)
+        {
+            if(buffer[i] == '\n')
+            {
+                //TODO: this needs to be more robust?
+                n--;
+            }
+        }
+        write(sockfd, buffer, n);
+        bzero(buffer, BSIZE);
+    }
+    write(sockfd, "&", 1);
+    while((n = read(keyfd, buffer, BSIZE - 1)) > 0)
+    {
+        rmLf = strchr(buffer, '\n');
+        if(rmLf != NULL)
+        {
+            *rmLf = '\0';
+        }
         write(sockfd, buffer, n);
         bzero(buffer, BSIZE);
     }
@@ -117,10 +150,12 @@ int main(int argc, char *argv[])
 
     //PROCESS THE SERVER'S RESPONSE
     bzero(buffer,BSIZE);
-    n = read(sockfd,buffer,BSIZE - 1);
-    if (n < 0) 
-         error("ERROR reading from socket");
-    printf("%s\n",buffer);
+    while((n = read(sockfd,buffer,BSIZE - 1)) > 0)
+    {
+        printf("%s",buffer);
+        bzero(buffer, BSIZE);
+    }
     close(sockfd);
+    printf("\n");
     return 0;
 }
