@@ -82,9 +82,8 @@ int main(int argc, char *argv[])
 
     numPlain = checkFile(argv[1]);
     numKey = checkFile(argv[2]);
-    printf("Number of chars in text file: %d\n", numPlain);
-    printf("Number of chars in text file: %d\n", numKey);
-    //TODO:check key when supplied
+    if (numKey < numPlain)
+        error("Key is not large neough");
 	
     plainfd = open(argv[1], O_RDONLY);
     if (plainfd < 0)

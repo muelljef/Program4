@@ -49,38 +49,12 @@ void encode(char *org, char *key, int n)
     }
 }
 
-
-int main(int argc, char *argv[])
+void handleResponse(int newsockfd)
 {
-    FILE *org, *key;
-    int sockfd, newsockfd, portno;
-    socklen_t clilen;
-    char buffer[BSIZE], keyBuffer[BSIZE];
-    struct sockaddr_in serv_addr, cli_addr;
-    int n;
-    if (argc < 2) {
-        fprintf(stderr,"ERROR, no port provided\n");
-        exit(1);
-    }
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-       error("ERROR opening socket");
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = atoi(argv[1]);
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
-    if (bind(sockfd, (struct sockaddr *) &serv_addr,
-             sizeof(serv_addr)) < 0) 
-             error("ERROR on binding");
-    listen(sockfd,5);
-    clilen = sizeof(cli_addr);
-    newsockfd = accept(sockfd, 
-                (struct sockaddr *) &cli_addr, 
-                &clilen);
-    if (newsockfd < 0) 
-         error("ERROR on accept");
 
+    FILE *org, *key;
+    char buffer[BSIZE], keyBuffer[BSIZE];
+    int n;
     //open a file to write content from stream
     org = fopen("temp", "w+");
     key = fopen("temp2", "w+");
@@ -143,9 +117,58 @@ int main(int argc, char *argv[])
 
     fclose(org);
     fclose(key);
+}
 
-    //close the socket
-    close(newsockfd);
-    close(sockfd);
+int main(int argc, char *argv[])
+{
+    int sockfd, newsockfd, portno;
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+    int n;
+    if (argc < 2) {
+        fprintf(stderr,"ERROR, no port provided\n");
+        exit(1);
+    }
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+       error("ERROR opening socket");
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    portno = atoi(argv[1]);
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(portno);
+    if (bind(sockfd, (struct sockaddr *) &serv_addr,
+             sizeof(serv_addr)) < 0) 
+             error("ERROR on binding");
+    listen(sockfd,5);
+ 
+    //clilen = sizeof(cli_addr);
+    //newsockfd = accept(sockfd, 
+    //            (struct sockaddr *) &cli_addr, 
+    //            &clilen);
+        newsockfd = accept(sockfd, NULL, NULL);
+        if (newsockfd < 0) 
+             error("ERROR on accept");
+
+        pid_t spawnpid;
+        spawnpid = fork(); 
+        if(spawnpid == 0)
+        {
+            close(sockfd);         //not needed copy of listening socket
+            handleResponse(newsockfd);
+            close(newsockfd);
+        }
+        else if (spawnpid > 0)
+        {
+            printf("spawnpid: %d\n", (int) spawnpid);
+            waitpid(spawnpid, NULL, NULL);
+            close(newsockfd);
+            close(sockfd);
+        }
+        else
+        {
+            close(newsockfd);
+            close(sockfd);
+        }
     return 0; 
 }
