@@ -12,14 +12,11 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include "shared.h"
 
+#ifndef BSIZE
 #define BSIZE 256 
-
-void error(const char *msg)
-{
-    perror(msg);
-    exit(1);
-}
+#endif
 
 //entry: buffer is split bye &, int is number of characters in the buffer
 //      org is the plaintext file, and key is the key file
@@ -110,10 +107,10 @@ void handleResponse(int newsockfd)
         {
             if(buffer[i] == '\n')
             {
-                //TODO: this needs to be more robust?
                 n--;
             }
         }
+        removeNewline(buffer, &n);
         encode(buffer, keyBuffer, n);
         write(newsockfd, buffer, n);
         bzero(buffer, BSIZE);
@@ -204,6 +201,5 @@ int main(int argc, char *argv[])
             close(newsockfd);
         }
     }
-
     return 0; 
 }
