@@ -12,114 +12,14 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+
 #include "shared.h"
+#include "serverFunc.h"
 
 #ifndef BSIZE
 #define BSIZE 256 
 #endif
 
-//entry: buffer is split bye &, int is number of characters in the buffer
-//      org is the plaintext file, and key is the key file
-//exit: text before & will be written to plaintext, and text after will
-//      be written to key file
-void splitRead(char *buffer, int n, FILE *org, FILE *key)
-{
-    char *pch;
-    pch = strtok(buffer, "&");
-    fprintf(org, "%s", pch);
-    pch = strtok(NULL, "&");
-    fprintf(key, "%s", pch);
-    bzero(buffer, BSIZE);
-}
-
-// 0 is space +32, 1-26 is [A-Z] +64
-void encode(char *org, char *key, int n)
-{
-    int i, tmpch;
-    for(i = 0; i < n; i++)
-    {
-        tmpch = (int)org[i] + (int)key[i];
-        tmpch = tmpch % 27;
-        switch(tmpch)
-        {
-            case 0:
-                org[i] = ' ';
-                break;
-            default:
-                org[i] = (char)(tmpch + 64);
-        }
-    }
-}
-
-void handleResponse(int newsockfd)
-{
-
-    FILE *org, *key;
-    char buffer[BSIZE], keyBuffer[BSIZE];
-    int n;
-    //open a file to write content from stream
-    org = fopen("temp", "w+");
-    key = fopen("temp2", "w+");
-
-    bzero(buffer,BSIZE);
-    char *findBreak;
-    int i, keyFlag, splitLine;
-    keyFlag = 0;
-    while((n = read(newsockfd,buffer,BSIZE - 1)) > 0)
-    {
-        splitLine = 0;
-        for(i = 0; i < n; i++)
-        {
-            if(buffer[i] == '&')
-            {
-                keyFlag = 1;
-                splitLine = 1;
-            }
-        }
-        if(splitLine)
-        {
-            //splitline found this time through the loop
-            splitRead(buffer, n, org, key);
-            //bzero called in function
-        }
-        //write to key if flag set otherwise
-        //plaintext
-        if(keyFlag)
-        {
-            fprintf(key, "%s", buffer);
-            bzero(buffer,BSIZE);
-        }
-        else
-        {
-            fprintf(org, "%s", buffer);
-            bzero(buffer,BSIZE);
-        }
-    }
-    rewind(org);
-    rewind(key);
-    
-    //SERVER RESPONDING WITH CIPHER TEXT
-    while((fgets(buffer, BSIZE, org)) != NULL)
-    {
-        n = strnlen(buffer, BSIZE);
-        fgets(keyBuffer, BSIZE, key);
-        for(i = 0; i < n ; i++)
-        {
-            if(buffer[i] == '\n')
-            {
-                n--;
-            }
-        }
-        removeNewline(buffer, &n);
-        encode(buffer, keyBuffer, n);
-        write(newsockfd, buffer, n);
-        bzero(buffer, BSIZE);
-        bzero(keyBuffer, BSIZE);
-    }
-
-    fclose(org);
-    fclose(key);
-}
 
 //From TLPI
 void clearChildren(int sig)
@@ -187,8 +87,9 @@ int main(int argc, char *argv[])
         if(spawnpid == 0)
         {
             close(sockfd);         //not needed copy of listening socket
+	    //handle the server response
             handleResponse(newsockfd);
-            //close(newsockfd);
+            //TODO: needed? close(newsockfd);
             exit(0);
         }
         else if (spawnpid > 0)
