@@ -81,7 +81,8 @@ void handleResponse(int newsockfd)
     FILE *org, *key;
     char buffer[BSIZE];
     int n, i, keyFlag;
-    
+    //char temp[BSIZE], temp2[BSIZE], pidStr[BSIZE];
+
     //ensure clear buffer
     memset(buffer, '\0', BSIZE);
 
@@ -90,10 +91,15 @@ void handleResponse(int newsockfd)
     write(newsockfd, "@@", 2);
     if (strncmp(buffer, "@@", 2) != 0)
         return;
+
+    //sprintf(pidStr, "%d", (int)getpid());
+    //strncat("temp_", 
     
     //open a file to write content from stream
-    org = fopen("temp", "w+");
-    key = fopen("temp2", "w+");
+    //org = fopen("temp", "w+");
+    //key = fopen("temp2", "w+");
+    org = tmpfile();
+    key = tmpfile();
 
     
     //initialize bool for key input being sent to false
