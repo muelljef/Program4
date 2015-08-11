@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
         }
         else if (spawnpid > 0)
         {
-            printf("spawnpid: %d\n", (int) spawnpid);
             close(newsockfd);
         }
         else
