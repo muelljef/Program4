@@ -81,13 +81,21 @@ void handleResponse(int newsockfd)
     FILE *org, *key;
     char buffer[BSIZE];
     int n, i, keyFlag;
+    
+    //ensure clear buffer
+    memset(buffer, '\0', BSIZE);
+
+    //ensure contacting the encode function
+    n = read(newsockfd, buffer, 2);
+    write(newsockfd, "@@", 2);
+    if (strncmp(buffer, "@@", 2) != 0)
+        return;
+    
     //open a file to write content from stream
     org = fopen("temp", "w+");
     key = fopen("temp2", "w+");
 
-    //ensure clear buffer
-    memset(buffer, '\0', BSIZE);
-
+    
     //initialize bool for key input being sent to false
     //plaintext send first, then key input after flag
     keyFlag = 0;

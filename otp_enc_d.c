@@ -87,9 +87,10 @@ int main(int argc, char *argv[])
         if(spawnpid == 0)
         {
             close(sockfd);         //not needed copy of listening socket
-	    //handle the server response
+            //check encode function is calling
+            
+            //handle the server response
             handleResponse(newsockfd);
-            //TODO: needed? close(newsockfd);
             exit(0);
         }
         else if (spawnpid > 0)

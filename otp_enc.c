@@ -79,6 +79,18 @@ int main(int argc, char *argv[])
 
     //Initialize the buffer to nulls
     memset(buffer, '\0', BSIZE);
+
+    //Send message indicated encode function calling
+    write(sockfd, "@@", 2);
+    read(sockfd, buffer, 2);
+    if (strncmp(buffer, "@@", 2) != 0)
+    {
+        fprintf(stderr, "Could not locate otp_enc\n");
+        close(sockfd);
+        return;
+    }
+
+    memset(buffer, '\0', BSIZE);
     //write the plaintext file to the socket
     while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
     {
