@@ -38,20 +38,6 @@ int main(int argc, char *argv[])
     if (numKey < numPlain)
         error("Key is not large enough");
 	
-    //Open the plaintext and key files for writing to socket
-    plainfd = open(argv[1], O_RDONLY);
-    if (plainfd < 0)
-    {
-        fprintf(stderr, "error opening file");
-        exit(1);
-    }
-    keyfd = open(argv[2], O_RDONLY);
-    if (fpKey < 0)
-    {
-        fprintf(stderr, "error opening key");
-        exit(1);
-    }
-
     //convert the port number from string to socket
     portno = atoi(argv[3]);
     //Create the socket
@@ -89,6 +75,21 @@ int main(int argc, char *argv[])
         close(sockfd);
         return;
     }
+
+    //Open the plaintext and key files for writing to socket
+    plainfd = open(argv[1], O_RDONLY);
+    if (plainfd < 0)
+    {
+        fprintf(stderr, "error opening file");
+        exit(1);
+    }
+    keyfd = open(argv[2], O_RDONLY);
+    if (fpKey < 0)
+    {
+        fprintf(stderr, "error opening key");
+        exit(1);
+    }
+
 
     memset(buffer, '\0', BSIZE);
     //write the plaintext file to the socket
