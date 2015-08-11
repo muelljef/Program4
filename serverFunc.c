@@ -96,10 +96,10 @@ void handleResponse(int newsockfd)
     //strncat("temp_", 
     
     //open a file to write content from stream
-    //org = fopen("temp", "w+");
-    //key = fopen("temp2", "w+");
-    org = tmpfile();
-    key = tmpfile();
+    org = fopen("temp", "w+");
+    key = fopen("temp2", "w+");
+    //org = tmpfile();
+    //key = tmpfile();
 
     
     //initialize bool for key input being sent to false
