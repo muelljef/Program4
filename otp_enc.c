@@ -35,9 +35,17 @@ int main(int argc, char *argv[])
     //Checking that number of characters in Key file is 
     //greater than plaintext file
     numPlain = checkFile(argv[1]);
+    if(numPlain < 0)
+    {
+        fprintf(stderr, "Error, invalid characters\n");
+        exit(1);
+    }
     numKey = checkFile(argv[2]);
     if (numKey < numPlain)
-        error("Key is not large enough");
+    {
+        fprintf(stderr, "Key is not large enough\n");
+        exit(1);
+    }
 	
     //convert the port number from string to socket
     portno = atoi(argv[3]);
