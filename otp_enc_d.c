@@ -165,6 +165,43 @@ int splitRead(char *buffer, int n, FILE *org, FILE *key)
     return 0;
 }
 
+//entry: character of space or [A-Z]
+//exit: integer of 0 for space [1-26] for
+//      character range
+int convertToInt(char ch)
+{
+   int chInt;
+   //if a space return 0
+   //else convert to 1-26 character range
+   if(ch == ' ')
+   {
+       return 0;
+   }
+   else
+   {
+       chInt = (int)ch - 64; 
+       return chInt;
+   }
+}
+
+//entry: integer from 0-26, 0==space, 1-26 is [A-Z]
+//exit: return character corresponding to above codes
+char convertToChar(int chInt)
+{
+    //if 0 return space
+    if(chInt == 0)
+    {
+        return ' ';
+    }
+    else
+    {
+        //if not add 64
+        //cast to char and return
+        chInt += 64;
+        return ((char) chInt);
+    }
+}
+
 // entry: org string to encode and key string to use for encoding,
 //      key must be as long as org. n is the length of org string
 // exit: org will be encoded text based on key string
@@ -176,19 +213,11 @@ void encode(char *org, char *key, int n)
     for(i = 0; i < n; i++)
     {
         //convert characters to integer and add org to key at i
-        tmpch = (int)org[i] + (int)key[i];
-        //take the modulus of 27
-        tmpch = tmpch % 27;
-        //case 0 is the space, so if 0 set to space
-        //otherwise add 64 to the integer and cast to character
-        switch(tmpch)
-        {
-            case 0:
-                org[i] = ' ';
-                break;
-            default:
-                org[i] = (char)(tmpch + 64);
-        }
+        //integer range of 0-26
+        tmpch = (convertToInt(org[i]) + convertToInt(key[i])) % 27;
+        //convert the result in tmpch to either space or [A-Z]
+        //based on the integer in tmpch
+        org[i] = convertToChar(tmpch);
     }
 }
 
