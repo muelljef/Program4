@@ -37,13 +37,19 @@ int main(int argc, char *argv[])
     numCipher = checkFile(argv[1]);
     if(numCipher < 0)
     {
-        fprintf(stderr, "Error, invalid characters\n");
+        fprintf(stderr, "%s: Error, invalid characters, otp_dec closing\n", argv[1]);
         exit(1);
     }
     numKey = checkFile(argv[2]);
+    if(numKey < 0)
+    {
+        fprintf(stderr, "%s: Error, invalid characters, otp_dec closing\n", argv[2]);
+        exit(1);
+    }
+    //check key is large enough
     if (numKey < numCipher)
     {
-        fprintf(stderr, "Key is not large enough\n");
+        fprintf(stderr, "Error: Key is not large enough, otp_dec closing\n");
         exit(1);
     }
 	
@@ -71,7 +77,10 @@ int main(int argc, char *argv[])
 
     //Connect to the socket
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
+    {
+        fprintf(stderr, "Could not connect to port %s, otp_dec closing\n", argv[3]);
+        exit(2);
+    }
 
     //Initialize the buffer to nulls
     memset(buffer, '\0', BSIZE);
@@ -82,7 +91,7 @@ int main(int argc, char *argv[])
     //If the incorrect string is returned, wrong server, exit
     if (strncmp(buffer, "!!", 2) != 0)
     {
-        fprintf(stderr, "Could not locate otp_dec_d\n");
+        fprintf(stderr, "Could not locate otp_dec_d on port %s, otp_dec closing\n", argv[3]);
         close(sockfd);
         exit(1);
     }

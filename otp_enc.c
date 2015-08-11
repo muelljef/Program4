@@ -33,17 +33,23 @@ int main(int argc, char *argv[])
     }
 
     //Checking that number of characters in Key file is 
-    //greater than plaintext file
+    //greater than plaintext file and valid characters
     numPlain = checkFile(argv[1]);
     if(numPlain < 0)
     {
-        fprintf(stderr, "Error, invalid characters\n");
+        fprintf(stderr, "%s: Error, invalid characters, otp_enc closing\n", argv[1]);
         exit(1);
     }
     numKey = checkFile(argv[2]);
+    if(numKey < 0)
+    {
+        fprintf(stderr, "%s: Error, invalid characters, otp_enc closing\n", argv[2]);
+        exit(1);
+    }
+    //check the key is large enough
     if (numKey < numPlain)
     {
-        fprintf(stderr, "Key is not large enough\n");
+        fprintf(stderr, "Error: Key is not large enough, otp_enc closing\n");
         exit(1);
     }
 	
@@ -71,7 +77,10 @@ int main(int argc, char *argv[])
 
     //Connect to the socket
     if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
+    {
+        fprintf(stderr, "Could not connect to port %s, otp_enc closing\n", argv[3]);
+        exit(2);
+    }
 
     //Initialize the buffer to nulls
     memset(buffer, '\0', BSIZE);
@@ -82,9 +91,9 @@ int main(int argc, char *argv[])
     //If the incorrect string is returned, wrong server, exit
     if (strncmp(buffer, "@@", 2) != 0)
     {
-        fprintf(stderr, "Could not locate otp_enc_d\n");
+        fprintf(stderr, "Could not locate otp_enc_d on port %s, otp_enc closing\n", argv[3]);
         close(sockfd);
-        exit(1);
+        exit(2);
     }
 
     //Open the plaintext and key files for writing to socket
