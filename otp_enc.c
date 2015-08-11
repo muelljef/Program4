@@ -15,8 +15,6 @@
 #define BSIZE 256
 #endif
 
-int checkFile(char *filename);
-
 int main(int argc, char *argv[])
 {
     int sockfd, portno, n, plainfd, keyfd;
@@ -25,26 +23,28 @@ int main(int argc, char *argv[])
     int numKey, numPlain;
     FILE *fpKey;
     char buffer[BSIZE];
+    char *rmLf;
 
-    printf("%d\n", BSIZE);
-
+    //Checking that all parameters have been passed in
     if (argc < 4) {
        fprintf(stderr,"usage %s hostname port\n", argv[0]);
        exit(0);
     }
 
+    //Checking that number of characters in Key file is 
+    //greater than plaintext file
     numPlain = checkFile(argv[1]);
     numKey = checkFile(argv[2]);
     if (numKey < numPlain)
-        error("Key is not large neough");
+        error("Key is not large enough");
 	
+    //Open the plaintext and key files for writing to socket
     plainfd = open(argv[1], O_RDONLY);
     if (plainfd < 0)
     {
         fprintf(stderr, "error opening file");
         exit(1);
     }
-
     keyfd = open(argv[2], O_RDONLY);
     if (fpKey < 0)
     {
@@ -52,27 +52,34 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    //convert the port number from string to socket
     portno = atoi(argv[3]);
+    //Create the socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
+    //Get server details
     server = gethostbyname("localhost");
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
         exit(0);
     }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+
+    //Setting server details in struct serv_addr
+    memset((char *) &serv_addr, '\0', sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
+    memcpy((char *)&serv_addr.sin_addr.s_addr,
+            (char *)server->h_addr,
+            server->h_length);
     serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+
+    //Connect to the socket
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
         error("ERROR connecting");
 
-    bzero(buffer, BSIZE);
-    char *rmLf;
-    int i = 0;
+    //Initialize the buffer to nulls
+    memset(buffer, '\0', BSIZE);
+    //write the plaintext file to the socket
     while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
     {
         rmLf = strchr(buffer, '\n');
@@ -81,18 +88,12 @@ int main(int argc, char *argv[])
             *rmLf = '\0';
             n--;
         }
-        //for(i = 0; i < n; i++)
-        //{
-        //    if(buffer[i] == '\n')
-        //    {
-        //        buffer[i] = '\0';
-        //        n--;
-        //    }
-        //}
         write(sockfd, buffer, n);
-        bzero(buffer, BSIZE);
+        memset(buffer, '\0', BSIZE);
     }
+    //write the delimiting character to the socket
     write(sockfd, "&", 1);
+    //write the key file to the socket 
     while((n = read(keyfd, buffer, BSIZE - 1)) > 0)
     {
         rmLf = strchr(buffer, '\n');
@@ -102,7 +103,7 @@ int main(int argc, char *argv[])
             n--;
         }
         write(sockfd, buffer, n);
-        bzero(buffer, BSIZE);
+        memset(buffer, '\0', BSIZE);
     }
 
     //Shutdown the client write operation to send EOF to server
@@ -111,60 +112,13 @@ int main(int argc, char *argv[])
         error("shutdown write client failed");
 
     //PROCESS THE SERVER'S RESPONSE
-    bzero(buffer,BSIZE);
+    memset(buffer, '\0', BSIZE);
     while((n = read(sockfd,buffer,BSIZE - 1)) > 0)
     {
         printf("%s",buffer);
-        bzero(buffer, BSIZE);
+        memset(buffer, '\0', BSIZE);
     }
     close(sockfd);
     printf("\n");
     return 0;
-}
-
-//Entry: filename as string
-//Exit:  If all characters in file are valid the function will return
-//          the number of characters, if an invalid character is found
-//          the function will return -1
-int checkFile(char *filename)
-{
-    FILE *fp;
-    int c, count;
-
-    fp = fopen(filename, "r");
-    if(fp == NULL) 
-    {
-        fprintf(stderr, "file %s did not open\n", filename);
-        return -1;
-    }
-
-    count = 0;
-    while((c = fgetc(fp)) != EOF)
-    {
-        //If c is not a space or an alphabetic character
-        if(c != 32 && !isalpha(c))
-        {
-            //if c is a lf character
-            if(c == 10)
-            {
-                //get the next character
-                c = fgetc(fp);
-                //if newline is followed by EOF ok, return count
-                if (c == EOF)
-                {
-                    fclose(fp);
-                    return count;
-                }
-            }
-            //all other non space or alpha characters
-            //or newline not followed by EOF
-            //is invalid input
-            fclose(fp);
-            return -1;
-        }
-        count++;
-    }
-    //in case the file happens to end in just EOF without newline prior
-    fclose(fp);
-    return count;
 }
