@@ -23,10 +23,13 @@ void handleResponse(int newsockfd);
 //From TLPI
 void clearChildren(int sig)
 {
+    //save the errno before calling waitpid
     int savedErrno;
     savedErrno = errno;
+    //clear the waiting children
     while(waitpid(-1, NULL, WNOHANG) > 0)
         continue;
+    //restore the errno
     errno = savedErrno;
 }
 
@@ -42,7 +45,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    //SIG_CHILD handler to wait on children
+    //SIG_CHLD handler to wait on children
     struct sigaction sa;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
@@ -58,27 +61,30 @@ int main(int argc, char *argv[])
        error("ERROR opening socket");
 
     //Setting the server address to accept any clients
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+    memset((char *) &serv_addr, '\0', sizeof(serv_addr));
     portno = atoi(argv[1]);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
 
     //Binding the socket
-    if (bind(sockfd, (struct sockaddr *) &serv_addr,
-             sizeof(serv_addr)) < 0) 
-             error("ERROR on binding");
+    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) 
+         error("ERROR on binding");
 
     //Listening on the socket
     listen(sockfd,5);
  
     //SERVER LOOP
+    //infinite loop waiting for clients 
     while(1)
     {
         //getting new clients
         newsockfd = accept(sockfd, NULL, NULL);
         if (newsockfd < 0) 
-             error("ERROR on accept");
+        {
+            perror("accept");
+            continue;
+        }
 
         //Fork the client their own process, and return to listen
         pid_t spawnpid;
@@ -92,23 +98,29 @@ int main(int argc, char *argv[])
         }
         else if (spawnpid > 0)
         {
+            //close the extra copy of data socket
             close(newsockfd);
         }
         else
         {
+            fprintf(stderr, "fork failed, closing client\n");
+            //close the extra copy of data socket
             close(newsockfd);
         }
     }
     return 0; 
 }
 
+//entry: message to display with perror
+//exit: will display perror message then exit with status 1
 void error(const char *msg)
 {
     perror(msg);
     exit(1);
 }
 
-//buffer and string length n
+//entry: string and address of string length n
+//exit: It will remove the first newline found and decrement n
 void removeNewline(char *buffer, int *n)
 {
     int i;
@@ -129,33 +141,46 @@ void removeNewline(char *buffer, int *n)
 int splitRead(char *buffer, int n, FILE *org, FILE *key)
 {
     int i;
+    char *pch;
+    //iterate through buffer looking for &
     for(i = 0; i < n; i++)
     {
         if(buffer[i] == '&')
         {
-            char *pch;
+            //when fount take first token and write to org file
             pch = strtok(buffer, "&");
             fprintf(org, "%s", pch);
+            //take second token and write to key file
             pch = strtok(NULL, "&");
             fprintf(key, "%s", pch);
+            //clear the buffer and return 1 to indicate found
             memset(buffer, '\0', BSIZE);
             return 1;
         }
     }
-    //'&' not found
+    //'&' not found, write buffer to org file
+    //return 0 to indicate & was not found
     fprintf(org, "%s", buffer);
     memset(buffer, '\0', BSIZE);
     return 0;
 }
 
-// 0 is space +32, 1-26 is [A-Z] +64
+// entry: org string to encode and key string to use for encoding,
+//      key must be as long as org. n is the length of org string
+// exit: org will be encoded text based on key string
+//         0 is space +32, 1-26 is [A-Z] +64
 void encode(char *org, char *key, int n)
 {
     int i, tmpch;
+    //loop through all characters
     for(i = 0; i < n; i++)
     {
+        //convert characters to integer and add org to key at i
         tmpch = (int)org[i] + (int)key[i];
+        //take the modulus of 27
         tmpch = tmpch % 27;
+        //case 0 is the space, so if 0 set to space
+        //otherwise add 64 to the integer and cast to character
         switch(tmpch)
         {
             case 0:
@@ -167,6 +192,10 @@ void encode(char *org, char *key, int n)
     }
 }
 
+//entry: a valid socket stream  with the client to transfer data on, and open 
+//      plaintext and key files
+//exit; plaintext is encrypted based on key text and sent over
+//      the socket
 void cipherResponse(int newsockfd, FILE *org, FILE *key)
 {
     int n;
@@ -181,7 +210,7 @@ void cipherResponse(int newsockfd, FILE *org, FILE *key)
     {
         //get BSIZE characters from keyBuffer
         if((fgets(keyBuffer, BSIZE, key)) == NULL)
-            error("key not large enough");
+            fprintf(stderr, "inside response: key not large enough\n");
         //get the string size of the buffer
         n = strnlen(buffer, BSIZE);
         //remove the newline if it is there
@@ -197,6 +226,12 @@ void cipherResponse(int newsockfd, FILE *org, FILE *key)
     }
 }
 
+//entry: a valid open socket with the client
+//exit: will verify connecting with correct client,
+//      then recevie message, save to temp file, use
+//      temp files to encode text and send it back to
+//      client
+//      
 void handleResponse(int newsockfd)
 {
 
@@ -217,6 +252,7 @@ void handleResponse(int newsockfd)
     if (strncmp(buffer, "@@", 2) != 0)
         return;
 
+    //Set temp file names
     sprintf(pidStr, "%d", (int)getpid());
     strncat(temp, "org_", BSIZE);
     strncat(temp, pidStr, BSIZE  - strnlen(temp, BSIZE));
@@ -256,6 +292,7 @@ void handleResponse(int newsockfd)
     //close the files
     fclose(org);
     fclose(key);
+    //delete the temp files
     remove(temp);
     remove(temp2);
 }

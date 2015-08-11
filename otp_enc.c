@@ -53,7 +53,8 @@ int main(int argc, char *argv[])
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) 
         error("ERROR opening socket");
-    //Get server details
+    
+    //Get server details for s_addr
     server = gethostbyname("localhost");
     if (server == NULL) {
         fprintf(stderr,"ERROR, no such host\n");
@@ -78,11 +79,12 @@ int main(int argc, char *argv[])
     //Send message indicated encode function calling
     write(sockfd, "@@", 2);
     read(sockfd, buffer, 2);
+    //If the incorrect string is returned, wrong server, exit
     if (strncmp(buffer, "@@", 2) != 0)
     {
-        fprintf(stderr, "Could not locate otp_enc\n");
+        fprintf(stderr, "Could not locate otp_enc_d\n");
         close(sockfd);
-        return;
+        exit(1);
     }
 
     //Open the plaintext and key files for writing to socket
@@ -99,11 +101,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-
     memset(buffer, '\0', BSIZE);
     //write the plaintext file to the socket
     while((n = read(plainfd, buffer, BSIZE - 1)) > 0)
     {
+        //search for newline (from just before EOF) and remove it
         rmLf = strchr(buffer, '\n');
         if(rmLf != NULL)
         {
@@ -118,6 +120,7 @@ int main(int argc, char *argv[])
     //write the key file to the socket 
     while((n = read(keyfd, buffer, BSIZE - 1)) > 0)
     {
+        //search for newline (from just before EOF) and remove it
         rmLf = strchr(buffer, '\n');
         if(rmLf != NULL)
         {
@@ -135,6 +138,7 @@ int main(int argc, char *argv[])
 
     //PROCESS THE SERVER'S RESPONSE
     memset(buffer, '\0', BSIZE);
+    //read the servers response and output the text
     while((n = read(sockfd,buffer,BSIZE - 1)) > 0)
     {
         printf("%s",buffer);
@@ -145,13 +149,17 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+//entry: error string such as calling function error
+//exit: will report msg with errno and exit with status 1
 void error(const char *msg)
 {
     perror(msg);
     exit(1);
 }
 
-//buffer and string length n
+//entry: string and string length of n
+//exit: first newline will be replace by null terminating ch
+//      and n will be decremented
 void removeNewline(char *buffer, int *n)
 {
     int i;
@@ -174,6 +182,7 @@ int checkFile(char *filename)
     FILE *fp;
     int c, count;
 
+    //open the file
     fp = fopen(filename, "r");
     if(fp == NULL) 
     {
@@ -182,6 +191,7 @@ int checkFile(char *filename)
     }
 
     count = 0;
+    //loop through all the characters
     while((c = fgetc(fp)) != EOF)
     {
         //If c is not a space or an alphabetic character
