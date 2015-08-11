@@ -1,4 +1,9 @@
 client
+cipher*
+plain*
+run2
+otp_dec
+otp_dec_d
 server
 *.swp
 run
