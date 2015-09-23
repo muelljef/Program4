@@ -1,2 +1,2 @@
-# Program4
-client server interaction
+# client-server_encryption
+This is a set of client and server programs written in C to function on the Linux operating system. It makes use of Linux sockets, children processes, and signal catching to run a one time pad encryption on a plaintext file that contains only characters [A-Z] and spaces. Server programs with otp_enc_d or otp_dec_d must be initialized first, then the client functions (remove the _d) can run. A randomly generated file must be created prior to running the encryption with the helper function keygen and needs to be larger than the files to be encrypted or decrypted. The same file for encryption must be used for decryption.
